@@ -12,7 +12,7 @@ services:
       - pg_data:/var/lib/postgresql/data
 
   backend:
-    image: dmitryfedoroff/kittygram_backend
+    image: dikalinkirill/kittygram_backend
     env_file: .env
     restart: always
     depends_on:
@@ -22,14 +22,14 @@ services:
       - media:/app/media
 
   frontend:
-    image: dmitryfedoroff/kittygram_frontend
+    image: dikalinkirill/kittygram_frontend
     env_file: .env
     command: cp -r /app/build/. /frontend_static/
     volumes:
       - static:/frontend_static
 
   gateway:
-    image: dmitryfedoroff/kittygram_gateway
+    image: dikalinkirill/kittygram_gateway
     env_file: .env
     restart: always
     depends_on:
