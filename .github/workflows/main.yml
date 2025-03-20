@@ -145,16 +145,18 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
+          sudo apt install docker-compose
           sudo docker system prune -af
           sudo npm cache clean --force
           sudo apt clean
           sudo journalctl --vacuum-time=1d
           cd /home/kittygram
-          sudo docker compose pull
-          sudo docker compose down
-          sudo docker compose up -d
-          sudo docker compose exec backend python manage.py migrate
-          sudo docker compose exec backend python manage.py collectstatic --no-input
+          sudo docker-compose -f docker-compose.production.yml pull
+          sudo docker-compose -f docker-compose.production.yml down
+          sudo docker-compose -f docker-compose.production.yml up -d
+          sudo docker-compose -f docker-compose.production.yml exec backend python manage.py migrate
+          sudo docker-compose -f docker-compose.production.yml exec backend python manage.py collectstatic --no-input
+
 
   send_message:
     runs-on: ubuntu-latest
