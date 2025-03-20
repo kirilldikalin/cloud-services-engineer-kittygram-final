@@ -145,16 +145,29 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
+          # Установка Docker и npm, если они не установлены
+          sudo apt update
+          sudo apt install -y docker.io nodejs npm
+
+          # Обновление Docker
+          sudo systemctl enable --now docker
+
+          # Очистка системы
           sudo docker system prune -af
           sudo npm cache clean --force
           sudo apt clean
           sudo journalctl --vacuum-time=1d
+
+          # Разворачивание контейнеров
           cd /home/kittygram
           sudo docker compose -f docker-compose.production.yml pull
           sudo docker compose -f docker-compose.production.yml down
           sudo docker compose -f docker-compose.production.yml up -d
+
+          # Выполнение миграций и статических файлов
           sudo docker compose -f docker-compose.production.yml exec backend python manage.py migrate
           sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --no-input
+
 
   send_message:
     runs-on: ubuntu-latest
