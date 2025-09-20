@@ -69,11 +69,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Prepare deploy artifacts (.env and compose)
-        id: prep
         run: |
           set -e
           mkdir -p deploy_artifacts
-          # .env
           {
             echo "POSTGRES_USER=postgres_kittygram_user"
             echo "POSTGRES_PASSWORD=postgres_kittygram_password"
@@ -87,9 +85,14 @@ jobs:
             echo "DEFAULT_FROM_EMAIL=noreply@example.com"
             python3 -c "import secrets; print('SECRET_KEY='+secrets.token_urlsafe(64))"
           } > deploy_artifacts/.env
-          # docker-compose.yml из шаблона
           sed "s|__DOCKER_USER__|${{ secrets.DOCKER_USERNAME }}|g" deploy/docker-compose.yml > deploy_artifacts/docker-compose.yml
           ls -la deploy_artifacts
+
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          umask 077
+          printf "%s" "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
 
       - name: Upload artifacts to server
         uses: appleboy/scp-action@v0.1.7
@@ -97,9 +100,9 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
-          key: ${{ secrets.SSH_KEY }}
+          key_path: ~/.ssh/deploy_key
           source: "deploy_artifacts/.env,deploy_artifacts/docker-compose.yml"
-          target: "~/kittygram"
+          target: "/home/${{ secrets.SSH_USER }}/kittygram"
           strip_components: 1
 
       - name: Deploy via SSH
@@ -108,11 +111,10 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
-          key: ${{ secrets.SSH_KEY }}
+          key_path: ~/.ssh/deploy_key
           script: |
             set -e
-            mkdir -p ~/kittygram
-            cd ~/kittygram
+            cd /home/${USER:-${{ secrets.SSH_USER }}}/kittygram
             docker compose pull
             docker compose up -d --force-recreate
             docker compose exec -T backend python manage.py migrate
