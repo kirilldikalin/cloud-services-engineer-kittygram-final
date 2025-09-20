@@ -1,11 +1,15 @@
 variable "cloud_id"        { type = string }
 variable "folder_id"       { type = string }
-variable "sa_key_file"     { type = string  default = "" }
 variable "tf_state_bucket" { type = string }
 
-variable "network_name"  { type = string  default = "kitty-vpc" }
-variable "subnet_cidr"   { type = string  default = "10.10.0.0/24" }
-variable "zone"          { type = string  default = "ru-central1-a" }
+variable "sa_key_file" {
+  type    = string
+  default = ""
+}
+
+variable "network_name" { type = string  default = "kitty-vpc" }
+variable "subnet_cidr"  { type = string  default = "10.10.0.0/24" }
+variable "zone"         { type = string  default = "ru-central1-a" }
 
 variable "vm_name"       { type = string  default = "kitty-vm" }
 variable "vm_ssh_user"   { type = string  default = "student" }
