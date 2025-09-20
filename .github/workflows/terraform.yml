@@ -7,10 +7,7 @@ on:
         required: true
         default: plan
         type: choice
-        options:
-          - plan
-          - apply
-          - destroy
+        options: [plan, apply, destroy]
 
 jobs:
   tf:
@@ -20,13 +17,14 @@ jobs:
         working-directory: infra
     steps:
       - uses: actions/checkout@v4
-
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
 
       - name: Write SA key file
-        run: echo "${{ secrets.YC_SA_JSON_B64 }}" | base64 -d > sa-key.json
+        env:
+          SA_JSON_B64: ${{ secrets.YC_SA_JSON_B64 }}
+        run: python3 -c "import base64,os; open('sa-key.json','wb').write(base64.b64decode(os.environ['SA_JSON_B64']))"
 
       - name: Validate SA key JSON
         run: python3 -c 'import json; json.load(open("sa-key.json"))'
