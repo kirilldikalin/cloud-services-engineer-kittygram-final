@@ -52,8 +52,8 @@ jobs:
           terraform init -input=false
           -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           -backend-config="key=tf-state.tfstate"
-          -backend-config="endpoint=https://storage.yandexcloud.net"
-          -backend-config="region=ru-central1"
+          -backend-config="endpoints.s3=https://storage.yandexcloud.net"
+          -backend-config="region=us-east-1"
           -backend-config="use_path_style=true"
           -backend-config="access_key=$ACCESS_KEY"
           -backend-config="secret_key=$SECRET_KEY"
