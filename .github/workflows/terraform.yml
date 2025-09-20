@@ -22,10 +22,9 @@ jobs:
           terraform_version: 1.7.5
 
       - name: Write SA key file
-        run: echo "${{ secrets.YC_KEY_JSON }}" | base64 -d > authorized_key.json
-
-      - name: Validate SA key JSON
-        run: python3 -c 'import json; json.load(open("authorized_key.json"))'
+        env:
+          YC_KEY_JSON: ${{ secrets.YC_KEY_JSON }}
+        run: python3 -c "import os,base64,json; b=os.environ['YC_KEY_JSON']; d=base64.b64decode(b); open('authorized_key.json','wb').write(d); json.loads(d.decode()); print('sa key ok')"
 
       - name: Terraform Init
         env:
