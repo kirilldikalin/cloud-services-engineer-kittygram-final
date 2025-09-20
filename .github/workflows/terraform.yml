@@ -1,5 +1,4 @@
 name: Terraform
-
 on:
   workflow_dispatch:
     inputs:
@@ -8,8 +7,10 @@ on:
         required: true
         default: plan
         type: choice
-        options: [plan, apply, destroy]
-
+        options:
+          - plan
+          - apply
+          - destroy
 jobs:
   tf:
     runs-on: ubuntu-latest
@@ -18,29 +19,22 @@ jobs:
         working-directory: infra
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
-
       - name: Write SA key file
         run: echo "${{ secrets.YC_SA_JSON }}" > sa-key.json
-
       - name: Terraform Init
         env:
           AWS_ACCESS_KEY_ID:     ${{ secrets.ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
           TF_VAR_cloud_id:       ${{ secrets.YC_CLOUD_ID }}
           TF_VAR_folder_id:      ${{ secrets.YC_FOLDER_ID }}
-          TF_VAR_tf_state_bucket:${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_tf_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
           TF_VAR_vm_ssh_user:    ${{ secrets.SSH_USER }}
           TF_VAR_vm_ssh_pubkey:  ${{ secrets.SSH_PUBLIC_KEY }}
           TF_VAR_sa_key_file:    sa-key.json
-        run: |
-          terraform init -input=false \
-            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-
+        run: terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
       - name: Terraform Plan
         if: ${{ github.event.inputs.action == 'plan' }}
         env:
@@ -48,7 +42,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
           TF_VAR_sa_key_file:    sa-key.json
         run: terraform plan -input=false
-
       - name: Terraform Apply
         if: ${{ github.event.inputs.action == 'apply' }}
         env:
@@ -56,7 +49,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
           TF_VAR_sa_key_file:    sa-key.json
         run: terraform apply -auto-approve -input=false
-
       - name: Terraform Destroy
         if: ${{ github.event.inputs.action == 'destroy' }}
         env:
