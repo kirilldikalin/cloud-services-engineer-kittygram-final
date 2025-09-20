@@ -21,11 +21,44 @@ jobs:
         with:
           terraform_version: 1.7.5
 
+      - name: Debug SA key length
+        env:
+          SA_B64: ${{ secrets.YC_SA_KEY_B64 }}
+        run: python3 -c "import os; b=os.environ.get('SA_B64',''); print('len_b64=',len(b))"
+
       - name: Write SA key file
         env:
           SA_B64: ${{ secrets.YC_SA_KEY_B64 }}
-        run: python3 -c "import os,base64,json; b=os.environ.get('SA_B64',''); assert b,'YC_SA_KEY_B64 is empty'; d=base64.b64decode(b); json.loads(d.decode()); open('authorized_key.json','wb').write(d)"
+        run: |
+          python3 - <<'PY'
+          import os,base64,json,binascii,sys
+          b=os.environ.get('SA_B64','').strip()
+          assert b, 'YC_SA_KEY_B64 is empty'
+          try:
+              d=base64.b64decode(b, validate=True)
+          except binascii.Error as e:
+              sys.exit(f'invalid base64: {e}')
+          try:
+              json.loads(d.decode())
+          except Exception as e:
+              sys.exit(f'bad json after decode: {e}')
+          open('authorized_key.json','wb').write(d)
+          print('decoded_len=',len(d))
+          PY
 
+      - name: Write SA key file
+        env:
+          SA_JSON: ${{ secrets.YC_SA_JSON_RAW }}
+        run: |
+          python3 - <<'PY'
+          import os,json,sys
+          s=os.environ.get('SA_JSON','')
+          assert s, 'YC_SA_JSON_RAW is empty'
+          json.loads(s)  # валидируем
+          open('authorized_key.json','wb').write(s.encode())
+          print('json_len=',len(s))
+          PY
+          
       - name: Terraform Init
         env:
           ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
