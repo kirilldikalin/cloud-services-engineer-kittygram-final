@@ -1,15 +1,9 @@
-variable "cloud_id" {
-  type = string
-}
-variable "folder_id" {
-  type = string
-}
+variable "cloud_id"        { type = string }
+variable "folder_id"       { type = string }
+
 variable "sa_key_file" {
   type    = string
-  default = ""
-}
-variable "tf_state_bucket" {
-  type = string
+  default = "authorized_key.json"
 }
 
 variable "network_name" {
@@ -33,9 +27,7 @@ variable "vm_ssh_user" {
   type    = string
   default = "student"
 }
-variable "vm_ssh_pubkey" {
-  type = string
-}
+variable "vm_ssh_pubkey" { type = string }
 variable "vm_platform" {
   type    = string
   default = "standard-v3"

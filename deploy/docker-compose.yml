@@ -32,7 +32,7 @@ services:
     image: __DOCKER_USER__/kittygram_frontend:latest
     platform: linux/amd64
     env_file: .env
-    command: sh -c "cp -r /app/build/. /frontend_static/ && tail -f /dev/null && tail -f /dev/null"
+    command: sh -c "cp -r /app/build/. /frontend_static/ && tail -f /dev/null && tail -f /dev/null && tail -f /dev/null"
     restart: always
     volumes:
       - static:/frontend_static

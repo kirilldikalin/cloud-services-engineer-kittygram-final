@@ -1,6 +1,5 @@
 cloud_id = "b1ge2fdf4d05vfk721ea"
 folder_id = "b1guqsdf3fuf9kcujsj3"
-sa_key_file = "sa-key.json"
 tf_state_bucket = "kittygram-tfstate-extra"
 
 vm_ssh_user = "student"
