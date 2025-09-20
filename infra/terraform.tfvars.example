@@ -1,0 +1,7 @@
+cloud_id        = "b1g..."
+folder_id       = "b1g..."
+sa_key_file     = "sa-key.json"
+tf_state_bucket = "kittygram-tfstate-xxxx"
+
+vm_ssh_user     = "student"
+vm_ssh_pubkey   = "ssh-ed25519 AAAA... user@host"

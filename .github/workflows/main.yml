@@ -9,12 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Python setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.10' }
       - name: Backend deps
         run: |
           python -m pip install --upgrade pip
@@ -22,14 +18,10 @@ jobs:
           pip install flake8
       - name: Lint backend
         run: flake8 backend
-
       - name: Backend tests
         run: pytest -q
-
-      - name: Frontend Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+      - uses: actions/setup-node@v4
+        with: { node-version: '18' }
       - name: Frontend deps
         working-directory: frontend
         run: npm ci
@@ -42,32 +34,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Docker login
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build&Push backend
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kittygram_backend:latest
-
-      - name: Build&Push frontend
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kittygram_frontend:latest
-
-      - name: Build&Push gateway
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: ./nginx
           file: ./nginx/Dockerfile
@@ -88,24 +73,95 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
+            mkdir -p ~/kittygram
             cd ~/kittygram
-            if [ -f docker-compose.production.yml ]; then F="-f docker-compose.production.yml"; else F=""; fi
-            docker compose $F pull
-            docker compose $F up -d --force-recreate
-            docker compose $F exec -T backend python manage.py migrate
-            docker compose $F exec -T backend python manage.py collectstatic --noinput
-            docker compose $F ps
+            # .env
+            if ! [ -f .env ]; then
+              cat > .env <<ENV
+POSTGRES_USER=postgres_kittygram_user
+POSTGRES_PASSWORD=postgres_kittygram_password
+POSTGRES_DB=kittygram
+DB_NAME=kittygram
+DB_HOST=db
+DB_PORT=5432
+DEBUG=False
+ALLOWED_HOSTS=${{ secrets.SSH_HOST }},127.0.0.1,localhost
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+DEFAULT_FROM_EMAIL=noreply@example.com
+ENV
+              python3 - <<'PY' >> .env
+from django.core.management.utils import get_random_secret_key as g
+print('SECRET_KEY='+g())
+PY
+            fi
+            # docker-compose.yml
+            cat > docker-compose.yml <<'YAML'
+volumes:
+  pg_data:
+  static:
+  media:
+
+services:
+  db:
+    image: postgres:13
+    restart: always
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    image: ${{ secrets.DOCKER_USERNAME }}/kittygram_backend:latest
+    platform: linux/amd64
+    restart: always
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static:/backend_static
+      - media:/app/media
+
+  frontend:
+    image: ${{ secrets.DOCKER_USERNAME }}/kittygram_frontend:latest
+    platform: linux/amd64
+    env_file: .env
+    command: sh -c "cp -r /app/build/. /frontend_static/"
+    restart: always
+    volumes:
+      - static:/frontend_static
+
+  gateway:
+    image: ${{ secrets.DOCKER_USERNAME }}/kittygram_gateway:latest
+    platform: linux/amd64
+    restart: always
+    env_file: .env
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - static:/staticfiles
+      - media:/app/media
+YAML
+            docker compose pull
+            docker compose up -d --force-recreate
+            docker compose exec -T backend python manage.py migrate
+            docker compose exec -T backend python manage.py collectstatic --noinput
+            docker compose ps
 
   post_deploy_tests:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Python setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - name: Install deps and run tests against prod
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.10' }
+      - name: Install deps and run tests
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt

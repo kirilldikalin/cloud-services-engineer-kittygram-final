@@ -1,0 +1,7 @@
+cloud_id = "b1ge2fdf4d05vfk721ea"
+folder_id = "b1guqsdf3fuf9kcujsj3"
+sa_key_file = "sa-key.json"
+tf_state_bucket = "kittygram-tfstate-extra"
+
+vm_ssh_user = "student"
+vm_ssh_pubkey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC60W4Vy82kJEQASXujZ/8ZoXDeUFwnsGiQnUU5GDSn//wTRPZkLPhPoH1ZZt6Nwr6qym7eAtPbm20pYUoUtrNkoau/aK6Fy6c2zrkFFOVAv1ZsUIFJz62/NMM025eTY3SnunztsPakP+yRLKX+UOAjq2bZIpf5257dvbldYhjM8swOuARlN2tRZt+7o/Ah1Y6m2iYmxVTnQhdLKT6bwba57Hg8hH72he5EmekPToOcxtWgH8dFLKAJ/pQ2bdYrLMOVRnrOALoAydzv6SXBGWJjR/gpbALDtbjPpLCljXgzSlYSqLb2j6bJ6xJt3xC4FFW6qSa7jjG1hAJyptx7hGhT"

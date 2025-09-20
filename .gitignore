@@ -191,3 +191,6 @@ media/
 # -------------------------------
 node_modules/
 
+sa-key.json
+infra/.terraform/
+infra/.terraform.lock.hcl
