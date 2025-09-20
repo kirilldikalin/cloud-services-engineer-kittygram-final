@@ -10,7 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.10' }
+        with:
+          python-version: '3.10'
       - name: Backend deps
         run: |
           python -m pip install --upgrade pip
@@ -21,7 +22,8 @@ jobs:
       - name: Backend tests
         run: pytest -q
       - uses: actions/setup-node@v4
-        with: { node-version: '18' }
+        with:
+          node-version: '18'
       - name: Frontend deps
         working-directory: frontend
         run: npm ci
@@ -64,6 +66,42 @@ jobs:
     needs: build_and_push
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare deploy artifacts (.env and compose)
+        id: prep
+        run: |
+          set -e
+          mkdir -p deploy_artifacts
+          # .env
+          {
+            echo "POSTGRES_USER=postgres_kittygram_user"
+            echo "POSTGRES_PASSWORD=postgres_kittygram_password"
+            echo "POSTGRES_DB=kittygram"
+            echo "DB_NAME=kittygram"
+            echo "DB_HOST=db"
+            echo "DB_PORT=5432"
+            echo "DEBUG=False"
+            echo "ALLOWED_HOSTS=${{ secrets.SSH_HOST }},127.0.0.1,localhost"
+            echo "EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend"
+            echo "DEFAULT_FROM_EMAIL=noreply@example.com"
+            python3 -c "from django.core.management.utils import get_random_secret_key as g; print('SECRET_KEY='+g())"
+          } > deploy_artifacts/.env
+          # docker-compose.yml из шаблона
+          sed "s|__DOCKER_USER__|${{ secrets.DOCKER_USERNAME }}|g" deploy/docker-compose.yml > deploy_artifacts/docker-compose.yml
+          ls -la deploy_artifacts
+
+      - name: Upload artifacts to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "deploy_artifacts/.env,deploy_artifacts/docker-compose.yml"
+          target: "~/kittygram"
+          strip_components: 1
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -75,79 +113,6 @@ jobs:
             set -e
             mkdir -p ~/kittygram
             cd ~/kittygram
-            # .env
-            if ! [ -f .env ]; then
-              cat > .env <<ENV
-POSTGRES_USER=postgres_kittygram_user
-POSTGRES_PASSWORD=postgres_kittygram_password
-POSTGRES_DB=kittygram
-DB_NAME=kittygram
-DB_HOST=db
-DB_PORT=5432
-DEBUG=False
-ALLOWED_HOSTS=${{ secrets.SSH_HOST }},127.0.0.1,localhost
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
-DEFAULT_FROM_EMAIL=noreply@example.com
-ENV
-              python3 - <<'PY' >> .env
-from django.core.management.utils import get_random_secret_key as g
-print('SECRET_KEY='+g())
-PY
-            fi
-            # docker-compose.yml
-            cat > docker-compose.yml <<'YAML'
-volumes:
-  pg_data:
-  static:
-  media:
-
-services:
-  db:
-    image: postgres:13
-    restart: always
-    env_file: .env
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  backend:
-    image: ${{ secrets.DOCKER_USERNAME }}/kittygram_backend:latest
-    platform: linux/amd64
-    restart: always
-    env_file: .env
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - static:/backend_static
-      - media:/app/media
-
-  frontend:
-    image: ${{ secrets.DOCKER_USERNAME }}/kittygram_frontend:latest
-    platform: linux/amd64
-    env_file: .env
-    command: sh -c "cp -r /app/build/. /frontend_static/"
-    restart: always
-    volumes:
-      - static:/frontend_static
-
-  gateway:
-    image: ${{ secrets.DOCKER_USERNAME }}/kittygram_gateway:latest
-    platform: linux/amd64
-    restart: always
-    env_file: .env
-    depends_on:
-      - backend
-    ports:
-      - "80:80"
-    volumes:
-      - static:/staticfiles
-      - media:/app/media
-YAML
             docker compose pull
             docker compose up -d --force-recreate
             docker compose exec -T backend python manage.py migrate
@@ -157,10 +122,14 @@ YAML
   post_deploy_tests:
     needs: deploy
     runs-on: ubuntu-latest
+    env:
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.10' }
+        with:
+          python-version: '3.10'
       - name: Install deps and run tests
         run: |
           python -m pip install --upgrade pip
@@ -168,9 +137,6 @@ YAML
           pytest -q
       - name: Telegram notify
         if: ${{ success() && env.TELEGRAM_TOKEN != '' && env.TELEGRAM_TO != '' }}
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_TO}" -d text="Kittygram deploy OK: ${{ secrets.SSH_HOST }}" >/dev/null
