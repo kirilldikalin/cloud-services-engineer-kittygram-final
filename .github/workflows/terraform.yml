@@ -6,9 +6,12 @@ on:
       action:
         description: Select the Terraform action
         required: true
-        type: choice
         default: plan
-        options: [plan, apply, destroy]
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
 
 jobs:
   tf:
